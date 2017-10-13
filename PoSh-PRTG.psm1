@@ -359,7 +359,7 @@ Function Get-PRTGSensorProperty
   .SYNOPSIS
   Gets the property of an existing PRTG Sensor.
   .DESCRIPTION
-  Uses the PRTG API to set the property on an existing PRTG Sensor. The Property parameter can be discerned by opening the Settings page of a Sensor and looking at the HTML source of the INPUT fields (and removing the trailing underscore).
+  Uses the PRTG API to get the property on an existing PRTG Sensor. The Property parameter can be discerned by opening the Settings page of a Sensor and looking at the HTML source of the INPUT fields (and removing the trailing underscore).
   .EXAMPLE
   Get-PRTGSensorProperty -SensorID 1235 -Property "xmlurl"
   .EXAMPLE
@@ -757,10 +757,10 @@ Function Get-PRTGDevice
 [CmdletBinding(DefaultParameterSetName=’Session’)]
 param
 (
-    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The name of the Group you want to retrieve.')]
+    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The name of the Device you want to retrieve.')]
     [String]$Name,
 
-    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The ID of the Group you want to retrieve.')]
+    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The ID of the Device you want to retrieve.')]
     [int]$ID,
 
 
