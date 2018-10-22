@@ -101,9 +101,18 @@ param
 
             If ($Verbose) { Write-Warning $Result.Content }
 
-            [xml]$XML = $Result.Content
-
-            Return $XML
+            Write-Host $Result.Headers.'Content-Disposition'
+            If ($Result.Headers.'Content-Disposition' -Like '*.xml*')
+            {
+                If ($Verbose) { "Detected XML. Returning parsed XML."}
+                [xml]$XML = $Result.Content
+                Return $XML
+            }
+            else
+            {
+                If ($Verbose) { "Detected non-XML. Returning raw Content."}
+                Return $Result.Content
+            }
         }
     }
     Catch {
@@ -343,7 +352,7 @@ param
     If (!$Session) { $Session = @{Url = $Url;  Credentials = $Credentials; Username = $Username; PassHash = $PassHash} }
     $Result = Invoke-PRTGAPI -Endpoint "duplicateobject.htm" -Parameters @{id = $SensorID; targetid=$TargetID} -Session $Session
 
-    If ($Result -Match 'id=(?<ID>\d+)')
+    If ($Result -Match 'id=(?<ID>\d+)')    #TODO: make this more robust
     {
         Return New-Object PSObject -Property @{SensorID = $matches.ID}
     }
@@ -851,4 +860,4 @@ param
 )
    
     Return @(Get-PRTGObject -Type "sensors" @PSBoundParameters)
-}
+}ow
