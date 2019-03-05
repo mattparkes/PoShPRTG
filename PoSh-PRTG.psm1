@@ -875,69 +875,6 @@ param
 }
 
 
-
-Function Get-PRTGSensor
-{
-<#
-  .SYNOPSIS
-  Gets a list of Sensors from PRTG.
-  .DESCRIPTION
-  Uses the PRTG API to get a list of PRTG Sensors as an array.
-  .EXAMPLE
-  Get-PRTGSensor
-  .PARAMETER Name
-  The Name of the object you want.
-  .PARAMETER ID
-  The ID of the object you want.
-  .PARAMETER Columns
-  The Columns you want retrieved for each item. A ful list of columns is availible in the PRTG API documentation.
-  .PARAMETER Filter
-  A HashTable of Keyvalue pairs to filter the data, based on columns.
-  .PARAMETER Credentials
-  The Credentials used to connect to PRTG.
-  .PARAMETER Url
-  The base path to the PRTG API, including a trailing slash. e.g https://prtg.contosso.com/api/"
-#>
-[OutputType([array])]
-[CmdletBinding(DefaultParameterSetName='Session')]
-param
-(
-    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The name of the Group you want to retrieve.')]
-    [String]$Name,
-
-    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The ID of the Group you want to retrieve.')]
-    [int]$ID,
-
-    [Parameter(Mandatory=$False, ValueFromPipeline=$False, ValueFromPipelineByPropertyName=$True, HelpMessage='A comma separated list of fields/columns to return')]
-    [String]$Columns = "objid,name,sensor,device,host,group,parentid,probe,tags,active,comments, value_, status, message,priority,",
-
-    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='A HashTable of filter keyvalue pairs.')]
-    [HashTable]$Filters = @{},
-
-    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='A HashTable of API parameter keyvalue pairs.')]
-    [HashTable]$Parameters = @{},
-
-    [Parameter(ParameterSetName="Session", Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='A PSObject created with New-PRTGSession')]
-    [PSObject]$Session,
-
-    [Parameter(ParameterSetName="Credentials", Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='A PSCredentials object. containing the username and password of a PRTG user.')]
-    [PSCredential]$Credentials,
-
-    [Parameter(ParameterSetName="PassHash", Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The username of a PRTG user.')]
-    [String]$Username,
-
-    [Parameter(ParameterSetName="PassHash", Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The passhash of a PRTG user.')]
-    [String]$PassHash,
-
-    [Parameter(Mandatory=$False, ValueFromPipeline=$False, ValueFromPipelineByPropertyName=$True, HelpMessage='The URL of the PRTG API.')]
-    [String]$Url
-)
-   
-    Return @(Get-PRTGObject -Type "sensors" @PSBoundParameters)
-}
-
-
-
 Function Rename-PRTGSensor
 {
 <#
