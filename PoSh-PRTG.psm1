@@ -99,9 +99,9 @@ param
         Else          { $Result = Invoke-WebRequest -Method Get -Uri $Url -Body ($Body + $Parameters) -UseBasicParsing -ErrorAction Stop}
         If ($Result.StatusCode -Eq 200) {
 
-            If ($Verbose) { Write-Warning $Result.Content }
-
-            Write-Host $Result.Headers.'Content-Disposition'
+            If ($Verbose) { Write-Verbose $Result.Content }
+            If ($Verbose) { Write-Verbose $Result.Headers.'Content-Disposition' }
+            
             If ($Result.Headers.'Content-Disposition' -Like '*.xml*')
             {
                 If ($Verbose) { "Detected XML. Returning parsed XML."}
@@ -110,7 +110,7 @@ param
             }
             else
             {
-                If ($Verbose) { "Detected non-XML. Returning raw Content."}
+                If ($Verbose) { Write-Warning "Detected non-XML. Returning raw Content." }
                 Return $Result.Content
             }
         }
@@ -300,7 +300,7 @@ param
         Return New-Object PSObject -Property $SensorDetails
 }
 
-Function Clone-PRTGSensor
+Function Copy-PRTGSensor
 {
 <#
   .SYNOPSIS
@@ -308,7 +308,7 @@ Function Clone-PRTGSensor
   .DESCRIPTION
   Uses the PRTG API to create a new sensor, however the PRTG API only allows you to create a new sensor by cloning an existing sensor.
   .EXAMPLE
-  Clone-PRTGSensor -SensorID 1234 -TargetID 5678 -Name My Sensor
+  Clone-PRTGSensor -SensorID 1234 -TargetID 5678 -Name "My Sensor" -Unpause
   .EXAMPLE
   Get-Content C:\Temp\Input.txt | Foreach-Object {Clone-PRTGSensor -SensorID 5382 -TargetID 2347 -Name (("Queues: " + $_ + " - ActiveMessageCount") -replace "development", "production")}
   .PARAMETER SensorID
@@ -328,11 +328,14 @@ param
     [Parameter(Mandatory=$True, ValueFromPipeline=$False, ValueFromPipelineByPropertyName=$True, HelpMessage='The ID of an existing PRTG Sensor that you want to clone.')]
     [long]$SensorID,
 
-    [Parameter(Mandatory=$True, ValueFromPipeline=$False, ValueFromPipelineByPropertyName=$True, HelpMessage='The ID of the Group/Device that the new PRTG Sensor will be childed to.')]
+    [Parameter(Mandatory=$True, ValueFromPipeline=$False, ValueFromPipelineByPropertyName=$True, HelpMessage='The ID of the Device that the new PRTG Sensor will be childed to.')]
     [long]$TargetID,
 
-    [Parameter(Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The name of the new PRTG Sensor.')]
+    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The new name of the cloned PRTG Sensor.')]
     [String]$Name,
+
+    [Parameter(Mandatory=$False, ValueFromPipeline=$False, ValueFromPipelineByPropertyName=$True, HelpMessage='If preset, the newly created Sensor will be Unpaused/Resumed immediatly after it is created. (Deafult is for newly created sensors to be paused)')]
+    [Switch]$Unpause,
 
     [Parameter(ParameterSetName="Session", Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='A PSObject created with New-PRTGSession')]
     [PSObject]$Session,
@@ -350,11 +353,19 @@ param
     [String]$Url
 )
     If (!$Session) { $Session = @{Url = $Url;  Credentials = $Credentials; Username = $Username; PassHash = $PassHash} }
-    $Result = Invoke-PRTGAPI -Endpoint "duplicateobject.htm" -Parameters @{id = $SensorID; targetid=$TargetID} -Session $Session
+    $Parameters =@{id = $SensorID; targetid = $TargetID}
+    If ($Name) {$Parameters.name = $Name }
+    $Result = Invoke-PRTGAPI -Endpoint "duplicateobject.htm" -Parameters $Parameters -Session $Session
 
     If ($Result -Match 'id=(?<ID>\d+)')    #TODO: make this more robust
     {
-        Return New-Object PSObject -Property @{SensorID = $matches.ID}
+        $NewSensorID = $matches.ID
+
+        If ($Unpause) {
+            Resume-PRTGSensor -SensorID $NewSensorID | Out-Null
+        }
+
+        Return New-Object PSObject -Property @{SensorID = $NewSensorID}
     }
     Else
     {
@@ -362,6 +373,7 @@ param
     }
 
 }
+New-Alias -Name Clone-PRTGSensor -Value Copy-PRTGSensor
 Function Get-PRTGSensorProperty
 {
 <#
@@ -616,7 +628,7 @@ Function Get-PRTGObject
   The base path to the PRTG API, including a trailing slash. e.g https://prtg.contosso.com/api/"
 #>
 [OutputType([array])]
-[CmdletBinding(DefaultParameterSetName=’Session’)]
+[CmdletBinding(DefaultParameterSetName='Session')]
 param
 (
     [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The name of the Group you want to retrieve.')]
@@ -703,7 +715,7 @@ Function Get-PRTGGroup
   The base path to the PRTG API, including a trailing slash. e.g https://prtg.contosso.com/api/"
 #>
 [OutputType([array])]
-[CmdletBinding(DefaultParameterSetName=’Session’)]
+[CmdletBinding(DefaultParameterSetName='Session')]
 param
 (
     [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The name of the Group you want to retrieve.')]
@@ -763,7 +775,7 @@ Function Get-PRTGDevice
   The base path to the PRTG API, including a trailing slash. e.g https://prtg.contosso.com/api/"
 #>
 [OutputType([array])]
-[CmdletBinding(DefaultParameterSetName=’Session’)]
+[CmdletBinding(DefaultParameterSetName='Session')]
 param
 (
     [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The name of the Device you want to retrieve.')]
@@ -825,7 +837,7 @@ Function Get-PRTGSensor
   The base path to the PRTG API, including a trailing slash. e.g https://prtg.contosso.com/api/"
 #>
 [OutputType([array])]
-[CmdletBinding(DefaultParameterSetName=’Session’)]
+[CmdletBinding(DefaultParameterSetName='Session')]
 param
 (
     [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The name of the Group you want to retrieve.')]
@@ -860,4 +872,126 @@ param
 )
    
     Return @(Get-PRTGObject -Type "sensors" @PSBoundParameters)
-}ow
+}
+
+
+
+Function Get-PRTGSensor
+{
+<#
+  .SYNOPSIS
+  Gets a list of Sensors from PRTG.
+  .DESCRIPTION
+  Uses the PRTG API to get a list of PRTG Sensors as an array.
+  .EXAMPLE
+  Get-PRTGSensor
+  .PARAMETER Name
+  The Name of the object you want.
+  .PARAMETER ID
+  The ID of the object you want.
+  .PARAMETER Columns
+  The Columns you want retrieved for each item. A ful list of columns is availible in the PRTG API documentation.
+  .PARAMETER Filter
+  A HashTable of Keyvalue pairs to filter the data, based on columns.
+  .PARAMETER Credentials
+  The Credentials used to connect to PRTG.
+  .PARAMETER Url
+  The base path to the PRTG API, including a trailing slash. e.g https://prtg.contosso.com/api/"
+#>
+[OutputType([array])]
+[CmdletBinding(DefaultParameterSetName='Session')]
+param
+(
+    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The name of the Group you want to retrieve.')]
+    [String]$Name,
+
+    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The ID of the Group you want to retrieve.')]
+    [int]$ID,
+
+    [Parameter(Mandatory=$False, ValueFromPipeline=$False, ValueFromPipelineByPropertyName=$True, HelpMessage='A comma separated list of fields/columns to return')]
+    [String]$Columns = "objid,name,sensor,device,host,group,parentid,probe,tags,active,comments, value_, status, message,priority,",
+
+    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='A HashTable of filter keyvalue pairs.')]
+    [HashTable]$Filters = @{},
+
+    [Parameter(Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='A HashTable of API parameter keyvalue pairs.')]
+    [HashTable]$Parameters = @{},
+
+    [Parameter(ParameterSetName="Session", Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='A PSObject created with New-PRTGSession')]
+    [PSObject]$Session,
+
+    [Parameter(ParameterSetName="Credentials", Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='A PSCredentials object. containing the username and password of a PRTG user.')]
+    [PSCredential]$Credentials,
+
+    [Parameter(ParameterSetName="PassHash", Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The username of a PRTG user.')]
+    [String]$Username,
+
+    [Parameter(ParameterSetName="PassHash", Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The passhash of a PRTG user.')]
+    [String]$PassHash,
+
+    [Parameter(Mandatory=$False, ValueFromPipeline=$False, ValueFromPipelineByPropertyName=$True, HelpMessage='The URL of the PRTG API.')]
+    [String]$Url
+)
+   
+    Return @(Get-PRTGObject -Type "sensors" @PSBoundParameters)
+}
+
+
+
+Function Rename-PRTGSensor
+{
+<#
+  .SYNOPSIS
+  Renames an existing PRTG Sensor.
+  .DESCRIPTION
+  Uses the PRTG API to rename a PRTG sensor.
+  .EXAMPLE
+  Rename-PRTGSensor -SensorID 1234 -Name "My Sensor"
+  .PARAMETER SensorID
+  The ID of an existing PRTG Sensor that you want to rename.
+  .PARAMETER Name
+  The new name of the new PRTG Sensor.
+  .PARAMETER Credentials
+  The Credentials used to connect to PRTG.
+  .PARAMETER Url
+  The base path to the PRTG API, including a trailing slash. e.g https://prtg.contosso.com/api/"
+#>
+[CmdletBinding()]
+param
+(
+    [Parameter(Mandatory=$True, ValueFromPipeline=$False, ValueFromPipelineByPropertyName=$True, HelpMessage='The ID of an existing PRTG Sensor that you want to rename.')]
+    [long]$SensorID,
+
+    [Parameter(Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The new name of the new PRTG Sensor.')]
+    [String]$Name,
+
+    [Parameter(ParameterSetName="Session", Mandatory=$False, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='A PSObject created with New-PRTGSession')]
+    [PSObject]$Session,
+
+    [Parameter(ParameterSetName="Credentials", Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='A PSCredentials object. containing the username and password of a PRTG user.')]
+    [PSCredential]$Credentials,
+
+    [Parameter(ParameterSetName="PassHash", Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The username of a PRTG user.')]
+    [String]$Username,
+
+    [Parameter(ParameterSetName="PassHash", Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True, HelpMessage='The passhash of a PRTG user.')]
+    [String]$PassHash,
+
+    [Parameter(Mandatory=$False, ValueFromPipeline=$False, ValueFromPipelineByPropertyName=$True, HelpMessage='The URL of the PRTG API.')]
+    [String]$Url
+)
+    If (!$Session) { $Session = @{Url = $Url;  Credentials = $Credentials; Username = $Username; PassHash = $PassHash} }
+    $Result = Invoke-PRTGAPI -Endpoint "rename.htm" -Parameters @{id = $SensorID; value=$Name} -Session $Session
+    
+    $Result
+
+    #If ($Result -Match 'id=(?<ID>\d+)')    #TODO: make this more robust
+    #{
+    #    Return New-Object PSObject -Property @{SensorID = $matches.ID}
+    #}
+    #Else
+    #{
+    #    Throw "The PRTG API did not appear to Return the ID of the new sensor. The sensor was probably not successfully created."
+    #}
+
+}
